@@ -1,5 +1,5 @@
 import { Connection, BrainRegion } from '../types';
-import { getBezierPath, getMidpoint, getArrowAngle } from '../utils/geometry';
+import { getBezierPath, getMidpoint, getPointOnBezier } from '../utils/geometry';
 
 interface Props {
   connection: Connection;
@@ -44,20 +44,25 @@ export default function SynapseConnection({
   };
 
   const pathD = getBezierPath(sourcePos, targetPos);
+  const arrowPos = getPointOnBezier(sourcePos, targetPos, 0.65);
+  const arrowP1 = getPointOnBezier(sourcePos, targetPos, 0.63);
+  const arrowP2 = getPointOnBezier(sourcePos, targetPos, 0.67);
+  const arrowAngle = Math.atan2(arrowP2.y - arrowP1.y, arrowP2.x - arrowP1.x) * (180 / Math.PI);
   const mid = getMidpoint(sourcePos, targetPos);
-  const angle = getArrowAngle(sourcePos, targetPos);
 
   const color = resultType === 'success'
-    ? '#2ECC71'
+    ? '#51CF66'
     : resultType === 'bias'
-    ? '#E74C3C'
+    ? '#FF6B6B'
     : isGhost
-    ? '#2ECC7180'
+    ? '#51CF6680'
     : isHovered && deleteMode
-    ? '#E74C3C'
+    ? '#FF6B6B'
     : source.color;
 
-  const opacity = isGhost ? 0.4 : isOnSignalPath ? 1 : 0.7;
+  const targetColor = resultType ? color : isGhost ? color : target.color;
+  const opacity = isGhost ? 0.35 : isOnSignalPath ? 1 : isHovered ? 0.9 : 0.55;
+  const gradId = `conn-grad-${connection.id}`;
 
   return (
     <g
@@ -66,72 +71,58 @@ export default function SynapseConnection({
       onClick={onClick}
       className={deleteMode ? 'cursor-pointer' : ''}
     >
-      {/* Invisible wider path for easier hover/click */}
-      <path
-        d={pathD}
-        fill="none"
-        stroke="transparent"
-        strokeWidth={20}
-      />
+      <defs>
+        <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor={color} />
+          <stop offset="100%" stopColor={targetColor} />
+        </linearGradient>
+      </defs>
 
-      {/* Glow effect */}
+      {/* Hit area */}
+      <path d={pathD} fill="none" stroke="transparent" strokeWidth={20} />
+
+      {/* Glow */}
       {(isOnSignalPath || isHovered) && (
-        <path
-          d={pathD}
-          fill="none"
-          stroke={color}
-          strokeWidth={6}
-          opacity={0.3}
-          strokeLinecap="round"
-          style={{ filter: 'blur(4px)' }}
-        />
+        <path d={pathD} fill="none" stroke={color} strokeWidth={8} opacity={0.2} strokeLinecap="round" style={{ filter: 'blur(6px)' }} />
       )}
 
       {/* Main path */}
-      <path
-        d={pathD}
-        fill="none"
-        stroke={color}
-        strokeWidth={isOnSignalPath ? 3 : 2}
+      <path d={pathD} fill="none"
+        stroke={isGhost ? color : `url(#${gradId})`}
+        strokeWidth={isOnSignalPath ? 2.5 : 1.8}
         opacity={opacity}
         strokeLinecap="round"
-        strokeDasharray={isGhost ? '8 4' : isOnSignalPath ? 'none' : '10 5'}
+        strokeDasharray={isGhost ? '8 4' : '4 12'}
         style={{
           transition: 'all 0.3s ease',
-          animation: !isGhost && !isOnSignalPath ? 'dash-flow 1s linear infinite' : undefined,
+          animation: !isGhost ? 'dash-flow 2s linear infinite' : undefined,
+          filter: `drop-shadow(0 0 4px ${color}50)`,
         }}
       />
 
-      {/* Arrow at midpoint */}
-      <polygon
-        points="-5,-4 5,0 -5,4"
-        fill={color}
-        opacity={opacity}
-        transform={`translate(${mid.x}, ${mid.y}) rotate(${angle})`}
-        style={{ transition: 'all 0.3s ease' }}
+      {/* Solid overlay on signal path */}
+      {isOnSignalPath && (
+        <path d={pathD} fill="none" stroke={color} strokeWidth={2.5} opacity={0.9} strokeLinecap="round"
+          style={{ filter: `drop-shadow(0 0 8px ${color}80)` }}
+        />
+      )}
+
+      {/* Arrow */}
+      <polygon points="-5,-3.5 6,0 -5,3.5" fill={color}
+        opacity={isGhost ? 0.3 : opacity * 0.8}
+        transform={`translate(${arrowPos.x}, ${arrowPos.y}) rotate(${arrowAngle})`}
+        style={{ transition: 'all 0.3s ease', filter: `drop-shadow(0 0 3px ${color}60)` }}
       />
 
-      {/* Tooltip on hover */}
+      {/* Tooltip */}
       {isHovered && !isGhost && (
         <g>
-          <rect
-            x={mid.x - 60}
-            y={mid.y - 28}
-            width={120}
-            height={20}
-            rx={4}
-            fill="#12121a"
-            stroke={color}
-            strokeWidth={0.5}
-            opacity={0.9}
+          <rect x={mid.x - 65} y={mid.y - 30} width={130} height={22} rx={6}
+            fill="#0d1117" stroke={color} strokeWidth={0.5} opacity={0.95}
+            style={{ filter: `drop-shadow(0 0 8px ${color}40)` }}
           />
-          <text
-            x={mid.x}
-            y={mid.y - 16}
-            textAnchor="middle"
-            fill="#e8e8f0"
-            fontSize={8}
-            fontFamily="'DM Sans', sans-serif"
+          <text x={mid.x} y={mid.y - 17} textAnchor="middle" fill="#e8e8f0"
+            fontSize={9} fontFamily="'JetBrains Mono', monospace" letterSpacing="0.5px"
           >
             {source.shortName} → {target.shortName}
           </text>

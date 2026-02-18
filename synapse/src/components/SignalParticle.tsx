@@ -35,14 +35,14 @@ export default function SignalParticle({
 
   const pos = getPointOnBezier(sourcePos, targetPos, progress);
 
-  // Trail particles
+  // 6 trail particles for comet effect
   const trail: { pos: Position; opacity: number; size: number }[] = [];
-  for (let i = 1; i <= 4; i++) {
-    const t = Math.max(0, progress - i * 0.08);
+  for (let i = 1; i <= 6; i++) {
+    const t = Math.max(0, progress - i * 0.06);
     trail.push({
       pos: getPointOnBezier(sourcePos, targetPos, t),
-      opacity: 1 - i * 0.2,
-      size: 5 - i * 0.8,
+      opacity: 1 - i * 0.15,
+      size: 5 - i * 0.6,
     });
   }
 
@@ -52,42 +52,28 @@ export default function SignalParticle({
     <g>
       {/* Trail */}
       {trail.map((t, i) => (
-        <circle
-          key={i}
-          cx={t.pos.x}
-          cy={t.pos.y}
-          r={t.size}
-          fill={color}
-          opacity={t.opacity * 0.5}
+        <circle key={i} cx={t.pos.x} cy={t.pos.y} r={Math.max(t.size, 1)}
+          fill={color} opacity={t.opacity * 0.4}
+          style={{ filter: `blur(${i * 0.5}px)` }}
         />
       ))}
 
-      {/* Glow */}
-      <circle
-        cx={pos.x}
-        cy={pos.y}
-        r={16}
-        fill={color}
-        opacity={0.15}
-        style={{ filter: 'blur(8px)' }}
+      {/* Large halo */}
+      <circle cx={pos.x} cy={pos.y} r={22} fill={color} opacity={0.1} style={{ filter: 'blur(12px)' }} />
+
+      {/* Medium glow */}
+      <circle cx={pos.x} cy={pos.y} r={12} fill={color} opacity={0.2} style={{ filter: 'blur(6px)' }} />
+
+      {/* Outer ring */}
+      <circle cx={pos.x} cy={pos.y} r={8} fill="none" stroke={color} strokeWidth={1} opacity={0.4} />
+
+      {/* White core */}
+      <circle cx={pos.x} cy={pos.y} r={6} fill="#ffffff" opacity={0.95}
+        style={{ filter: `drop-shadow(0 0 8px ${color}) drop-shadow(0 0 16px ${color}) drop-shadow(0 0 24px ${color})` }}
       />
 
-      {/* Main particle */}
-      <circle
-        cx={pos.x}
-        cy={pos.y}
-        r={6}
-        fill="#ffffff"
-        opacity={0.9}
-        style={{ filter: `drop-shadow(0 0 8px ${color}) drop-shadow(0 0 16px ${color})` }}
-      />
-      <circle
-        cx={pos.x}
-        cy={pos.y}
-        r={3}
-        fill={color}
-        opacity={1}
-      />
+      {/* Color center */}
+      <circle cx={pos.x} cy={pos.y} r={3} fill={color} opacity={1} />
     </g>
   );
 }

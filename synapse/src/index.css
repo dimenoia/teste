@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Sora:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Outfit:wght@300;400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap');
 @import "tailwindcss";
 
 * {
@@ -9,7 +9,7 @@
 
 body {
   font-family: 'DM Sans', sans-serif;
-  background-color: #0a0a0f;
+  background: radial-gradient(ellipse at 40% 40%, #0d1117 0%, #080b10 40%, #050608 100%);
   color: #e8e8f0;
   min-height: 100vh;
   overflow: hidden;
@@ -19,6 +19,8 @@ body {
   width: 100vw;
   height: 100vh;
 }
+
+/* ========== ANIMATIONS ========== */
 
 @keyframes breathing {
   0%, 100% { opacity: 0.6; }
@@ -42,7 +44,7 @@ body {
 }
 
 @keyframes slide-up {
-  from { transform: translateY(100%); opacity: 0; }
+  from { transform: translateY(20px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
 }
 
@@ -52,8 +54,48 @@ body {
 }
 
 @keyframes dash-flow {
-  to { stroke-dashoffset: -20; }
+  to { stroke-dashoffset: -16; }
 }
+
+@keyframes float-particle {
+  0% { transform: translate(0, 0); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)); opacity: 0; }
+}
+
+@keyframes brain-breathe {
+  0%, 100% { opacity: 0.03; }
+  50% { opacity: 0.07; }
+}
+
+@keyframes glow-breathe {
+  0%, 100% { opacity: 0.06; transform: scale(0.97); }
+  50% { opacity: 0.12; transform: scale(1.03); }
+}
+
+@keyframes output-dash-rotate {
+  to { stroke-dashoffset: -24; }
+}
+
+@keyframes fire-btn-pulse {
+  0%, 100% { box-shadow: 0 0 20px var(--glow-color); }
+  50% { box-shadow: 0 0 35px var(--glow-color), 0 0 60px var(--glow-color-dim); }
+}
+
+@keyframes fadeInUp {
+  from { transform: translateY(12px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes glitch-text {
+  0%, 100% { text-shadow: 0 0 8px currentColor; }
+  25% { text-shadow: -2px 0 8px #FF6B6B, 2px 0 8px #5B9BD5; }
+  50% { text-shadow: 0 0 12px currentColor; }
+  75% { text-shadow: 2px 0 8px #FF6B6B, -2px 0 8px #CC5DE8; }
+}
+
+/* ========== UTILITY CLASSES ========== */
 
 .animate-breathing {
   animation: breathing 3s ease-in-out infinite;
@@ -64,11 +106,11 @@ body {
 }
 
 .animate-slide-up {
-  animation: slide-up 0.6s ease-out forwards;
+  animation: slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .animate-dash-flow {
-  animation: dash-flow 1s linear infinite;
+  animation: dash-flow 2s linear infinite;
 }
 
 .font-mono-sci {
@@ -76,9 +118,34 @@ body {
 }
 
 .font-heading {
-  font-family: 'Sora', sans-serif;
+  font-family: 'Outfit', sans-serif;
 }
 
 .font-body {
   font-family: 'DM Sans', sans-serif;
+}
+
+.result-stagger > *:nth-child(1) { animation: fadeInUp 400ms cubic-bezier(0.16, 1, 0.3, 1) 100ms both; }
+.result-stagger > *:nth-child(2) { animation: fadeInUp 400ms cubic-bezier(0.16, 1, 0.3, 1) 200ms both; }
+.result-stagger > *:nth-child(3) { animation: fadeInUp 400ms cubic-bezier(0.16, 1, 0.3, 1) 300ms both; }
+.result-stagger > *:nth-child(4) { animation: fadeInUp 400ms cubic-bezier(0.16, 1, 0.3, 1) 400ms both; }
+.result-stagger > *:nth-child(5) { animation: fadeInUp 400ms cubic-bezier(0.16, 1, 0.3, 1) 500ms both; }
+
+.glitch-text {
+  animation: glitch-text 3s ease-in-out infinite;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(100, 120, 255, 0.15);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 120, 255, 0.3);
 }

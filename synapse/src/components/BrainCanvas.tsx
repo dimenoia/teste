@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 import { BrainRegion, Connection, Stimulus, ToolMode, SimulationResult } from '../types';
 import { brainRegions } from '../data/brainRegions';
 import BrainRegionComponent from './BrainRegion';
@@ -27,6 +27,18 @@ interface Props {
 
 const CANVAS_W = 700;
 const CANVAS_H = 500;
+
+// Floating background particles
+const BG_PARTICLES = Array.from({ length: 18 }, (_, i) => ({
+  id: i,
+  cx: Math.random() * CANVAS_W,
+  cy: Math.random() * CANVAS_H,
+  r: 0.8 + Math.random() * 1.2,
+  dur: 30 + Math.random() * 30,
+  dx: (Math.random() - 0.5) * 200,
+  dy: (Math.random() - 0.5) * 200,
+  delay: Math.random() * 20,
+}));
 
 export default function BrainCanvas({
   connections,
@@ -108,7 +120,6 @@ export default function BrainCanvas({
     [toolMode, onRemoveConnection]
   );
 
-  // Result type for visual feedback
   const resultType =
     simulation.result?.type === 'success'
       ? 'success'
@@ -116,19 +127,19 @@ export default function BrainCanvas({
       ? 'bias'
       : null;
 
-  // Ghost connections for correct path display
-  const ghostConnections: Connection[] = [];
-  if (ghostPath) {
+  const ghostConnections: Connection[] = useMemo(() => {
+    if (!ghostPath) return [];
+    const conns: Connection[] = [];
     for (let i = 0; i < ghostPath.length - 1; i++) {
-      ghostConnections.push({
+      conns.push({
         id: `ghost-${ghostPath[i]}-${ghostPath[i + 1]}`,
         source: ghostPath[i],
         target: ghostPath[i + 1],
       });
     }
-  }
+    return conns;
+  }, [ghostPath]);
 
-  // Drag line source position
   const dragSourceRegion = dragSource
     ? brainRegions.find((r) => r.id === dragSource)
     : null;
@@ -138,6 +149,23 @@ export default function BrainCanvas({
         y: (dragSourceRegion.position.y / 100) * CANVAS_H,
       }
     : null;
+
+  // Brain silhouette path
+  const brainPath = `
+    M 100,160
+    C 90,120 95,80 130,50
+    C 170,15 240,5 320,10
+    C 400,15 460,35 510,70
+    C 555,100 575,140 580,190
+    C 585,240 575,300 555,340
+    C 530,385 490,415 440,430
+    C 390,445 340,448 290,440
+    C 240,432 190,415 155,390
+    C 120,365 100,330 92,290
+    C 84,250 85,210 90,180
+    C 92,168 95,164 100,160
+    Z
+  `;
 
   return (
     <svg
@@ -149,82 +177,95 @@ export default function BrainCanvas({
       onMouseUp={handleCanvasMouseUp}
       onMouseLeave={handleCanvasMouseUp}
     >
-      {/* Background */}
-      <rect width={CANVAS_W} height={CANVAS_H} fill="#0a0a0f" />
-
-      {/* Subtle grid */}
       <defs>
+        {/* Noise filter */}
+        <filter id="noise">
+          <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" />
+          <feColorMatrix type="saturate" values="0" />
+          <feBlend in="SourceGraphic" mode="multiply" />
+        </filter>
+
+        {/* Background gradient */}
+        <radialGradient id="bg-grad" cx="40%" cy="40%" r="70%">
+          <stop offset="0%" stopColor="#0d1117" />
+          <stop offset="50%" stopColor="#080b10" />
+          <stop offset="100%" stopColor="#050608" />
+        </radialGradient>
+
+        {/* Grid */}
         <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-          <path
-            d="M 40 0 L 0 0 0 40"
-            fill="none"
-            stroke="#1a1a2e"
-            strokeWidth="0.5"
-            opacity="0.3"
-          />
+          <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(100, 120, 255, 0.03)" strokeWidth="0.5" />
         </pattern>
+
+        {/* Brain fill gradient */}
+        <radialGradient id="brain-fill-grad" cx="45%" cy="45%" r="55%">
+          <stop offset="0%" stopColor="rgba(100, 120, 255, 0.03)" />
+          <stop offset="100%" stopColor="rgba(100, 120, 255, 0)" />
+        </radialGradient>
+
+        {/* Glow filter for brain */}
+        <filter id="brain-glow" x="-30%" y="-30%" width="160%" height="160%">
+          <feGaussianBlur stdDeviation="8" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+
+        {/* Outer halo filter */}
+        <filter id="brain-halo" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="20" />
+        </filter>
       </defs>
+
+      {/* Background */}
+      <rect width={CANVAS_W} height={CANVAS_H} fill="url(#bg-grad)" />
       <rect width={CANVAS_W} height={CANVAS_H} fill="url(#grid)" />
 
-      {/* Brain silhouette */}
-      <path
-        d={`
-          M 140,80
-          C 120,60 100,50 120,35
-          C 140,15 200,10 280,15
-          C 360,20 420,30 460,55
-          C 500,80 520,100 530,140
-          C 540,180 530,240 510,280
-          C 490,320 460,350 420,370
-          C 380,390 340,395 300,390
-          C 260,385 220,375 190,360
-          C 160,345 140,320 130,290
-          C 120,260 115,220 120,180
-          C 125,140 130,110 140,80
-          Z
-        `}
-        fill="none"
-        stroke="#2a2a4a"
-        strokeWidth="1.5"
-        opacity="0.5"
-      />
-      {/* Brain inner details */}
-      <path
-        d={`
-          M 300,20
-          C 300,60 290,100 300,140
-          C 310,180 320,220 310,260
-          C 300,300 290,340 300,380
-        `}
-        fill="none"
-        stroke="#1a1a2e"
-        strokeWidth="1"
-        opacity="0.4"
-      />
-      <path
-        d={`
-          M 200,50
-          C 230,80 260,120 240,160
-          C 220,200 250,250 230,300
-        `}
-        fill="none"
-        stroke="#1a1a2e"
-        strokeWidth="0.8"
-        opacity="0.3"
-      />
-      <path
-        d={`
-          M 400,45
-          C 420,90 410,140 430,190
-          C 450,240 420,300 410,350
-        `}
-        fill="none"
-        stroke="#1a1a2e"
-        strokeWidth="0.8"
-        opacity="0.3"
-      />
+      {/* Noise overlay */}
+      <rect width={CANVAS_W} height={CANVAS_H} fill="#080b10" opacity="0.025" filter="url(#noise)" />
 
-      {/* Ghost connections (correct path) */}
+      {/* Floating particles */}
+      {BG_PARTICLES.map((p) => (
+        <circle key={p.id} cx={p.cx} cy={p.cy} r={p.r} fill="rgba(120, 140, 255, 0.15)">
+          <animateTransform
+            attributeName="transform"
+            type="translate"
+            values={`0,0; ${p.dx},${p.dy}; 0,0`}
+            dur={`${p.dur}s`}
+            begin={`${p.delay}s`}
+            repeatCount="indefinite"
+          />
+          <animate
+            attributeName="opacity"
+            values="0;0.15;0.15;0"
+            dur={`${p.dur}s`}
+            begin={`${p.delay}s`}
+            repeatCount="indefinite"
+          />
+        </circle>
+      ))}
+
+      {/* ===== BRAIN SILHOUETTE ===== */}
+      {/* Layer 1: Outer halo (breathes) */}
+      <path d={brainPath} fill="rgba(100, 120, 255, 0.04)" stroke="none" filter="url(#brain-halo)">
+        <animate attributeName="opacity" values="0.03;0.07;0.03" dur="6s" repeatCount="indefinite" />
+      </path>
+
+      {/* Layer 2: Fill */}
+      <path d={brainPath} fill="url(#brain-fill-grad)" stroke="none" />
+
+      {/* Layer 3: Main outline with glow */}
+      <path d={brainPath} fill="none" stroke="rgba(100, 120, 255, 0.18)" strokeWidth="1.5" filter="url(#brain-glow)" />
+
+      {/* Brain inner folds */}
+      <path d="M 320,15 C 315,80 310,150 320,220 C 330,290 315,360 320,435" fill="none" stroke="rgba(100, 120, 255, 0.08)" strokeWidth="1" />
+      <path d="M 200,40 C 230,90 240,150 220,210 C 200,270 230,330 210,400" fill="none" stroke="rgba(100, 120, 255, 0.06)" strokeWidth="0.8" />
+      <path d="M 430,35 C 450,100 440,170 460,240 C 480,310 450,380 440,430" fill="none" stroke="rgba(100, 120, 255, 0.06)" strokeWidth="0.8" />
+      <path d="M 140,100 C 190,110 260,105 340,110 C 420,115 480,120 540,130" fill="none" stroke="rgba(100, 120, 255, 0.04)" strokeWidth="0.6" />
+      <path d="M 130,280 C 200,290 280,285 360,290 C 440,295 500,305 550,310" fill="none" stroke="rgba(100, 120, 255, 0.04)" strokeWidth="0.6" />
+
+      {/* Ghost connections */}
       {ghostConnections.map((conn) => (
         <SynapseConnection
           key={conn.id}
@@ -275,16 +316,20 @@ export default function BrainCanvas({
 
       {/* Drag line */}
       {dragSource && dragPos && dragSourcePos && (
-        <line
-          x1={dragSourcePos.x}
-          y1={dragSourcePos.y}
-          x2={dragPos.x}
-          y2={dragPos.y}
-          stroke={dragSourceRegion?.color || '#4A90D9'}
-          strokeWidth={2}
-          strokeDasharray="6 4"
-          opacity={0.7}
-        />
+        <>
+          <line
+            x1={dragSourcePos.x} y1={dragSourcePos.y} x2={dragPos.x} y2={dragPos.y}
+            stroke={dragSourceRegion?.color || '#5B9BD5'}
+            strokeWidth={2} strokeDasharray="6 4" opacity={0.5}
+            style={{ filter: `drop-shadow(0 0 6px ${dragSourceRegion?.color || '#5B9BD5'})` }}
+          />
+          <line
+            x1={dragSourcePos.x} y1={dragSourcePos.y} x2={dragPos.x} y2={dragPos.y}
+            stroke={dragSourceRegion?.color || '#5B9BD5'}
+            strokeWidth={6} opacity={0.15} strokeLinecap="round"
+            style={{ filter: 'blur(4px)' }}
+          />
+        </>
       )}
 
       {/* Brain regions */}
@@ -294,16 +339,12 @@ export default function BrainCanvas({
           region={region}
           isActive={activeRegions.has(region.id)}
           isSelected={selectedRegion?.id === region.id}
-          isEntryPoint={
-            selectedStimulus?.entryPoint === region.id && !simulation.isRunning
-          }
+          isEntryPoint={selectedStimulus?.entryPoint === region.id && !simulation.isRunning}
           isHovered={
             hoveredRegion === region.id ||
             (!!dragSource && dragSource !== region.id && canConnect(dragSource, region.id))
           }
-          resultType={
-            activeRegions.has(region.id) && simulation.result ? resultType : null
-          }
+          resultType={activeRegions.has(region.id) && simulation.result ? resultType : null}
           onMouseDown={(e) => handleRegionMouseDown(region.id, e)}
           onMouseUp={() => handleRegionMouseUp(region.id)}
           onMouseEnter={() => setHoveredRegion(region.id)}
